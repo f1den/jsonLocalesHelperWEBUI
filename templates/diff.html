@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Differences</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <button class="scroll-top" onclick="scrollToTop()" title="Scroll to top">↑</button>
+
+    <h1>Differences between {{ ru_file }} and {{ en_file }}</h1>
+    
+    <div class="tabs">
+        <div class="tab active" onclick="openTab(event, 'deepdiff')">DeepDiff</div>
+        <div class="tab" onclick="openTab(event, 'keycheck')">KeyCheck</div>
+        <div class="tab" onclick="openTab(event, 'translation')">Translation</div>
+        <div class="tab settings-tab" onclick="openTab(event, 'settings')">⚙ Settings</div>
+    </div>
+    
+    <div id="deepdiff" class="tab-content active">
+        <h2>DeepDiff Comparison</h2>
+        
+        {% if deep_differences %}
+            {% for diff in deep_differences %}
+                <div class="difference">
+                    <span class="key">{{ diff.key }}</span>
+                    <span class="type {{ diff.type }}">{{ diff.type }}</span>
+                    
+                    {% if diff.type == 'changed' %}
+                        <p>Old value: <span class="old-value">{{ diff.old_value }}</span></p>
+                        <p>New value: <span class="new-value">{{ diff.new_value }}</span></p>
+                    {% elif diff.type == 'added' %}
+                        <p>Added value: <span class="new-value">{{ diff.new_value }}</span></p>
+                    {% elif diff.type == 'removed' %}
+                        <p>Removed value: <span class="old-value">{{ diff.old_value }}</span></p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No differences found with DeepDiff.</p>
+        {% endif %}
+    </div>
+    
+    <div id="keycheck" class="tab-content">
+        <h2>Key Comparison</h2>
+        
+        <div class="key-list">
+            <h3>Added Keys ({{ key_differences.added|length }})</h3>
+            {% if key_differences.added %}
+                {% for item in key_differences.added %}
+                    <div class="key-item">
+                        <span class="key">{{ item.key }}</span>:
+                        <span class="new-value">{{ item.value }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No keys added.</p>
+            {% endif %}
+        </div>
+        
+        <div class="key-list">
+            <h3>Removed Keys ({{ key_differences.removed|length }})</h3>
+            {% if key_differences.removed %}
+                {% for item in key_differences.removed %}
+                    <div class="key-item">
+                        <span class="key">{{ item.key }}</span>:
+                        <span class="old-value">{{ item.value }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No keys removed.</p>
+            {% endif %}
+        </div>
+        
+        <div class="key-list">
+            <h3>Common Keys ({{ key_differences.common|length }})</h3>
+            {% if key_differences.common %}
+                {% for key in key_differences.common %}
+                    <div class="key-item">
+                        <span class="key">{{ key }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No common keys found.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div id="translation" class="tab-content">
+        <h2>Translation</h2>
+        
+        <div class="translation-controls">
+            <button class="save-all-btn" onclick="saveAllTranslations()">
+                Save All Translations (Ctrl+S)
+            </button>
+            <span id="status-message" class="status-message"></span>
+            <div class="backup-info">Automatic backups are created before each save in the 'backups' folder.</div>
+        </div>
+        
+        <div class="key-list">
+            <h3>Added Keys ({{ key_differences.added|length }})</h3>
+            {% if key_differences.added %}
+                {% for item in key_differences.added %}
+                    <div class="key-item" id="translation-{{ loop.index }}">
+                        <div class="key-value-row">
+                            <span class="key">{{ item.key }}</span>:
+                            <span class="new-value">{{ item.value }}</span>
+                            <div class="suggestion-btn-row">
+                                <button class="copy-btn" onclick="copyToTranslation(`{{ item.key }}`, `{{ item.value }}`, `input-{{ loop.index }}`)">
+                                    Copy to Translation
+                                </button>
+                                <button class="copy-clipboard-btn" onclick="copyToClipboard(event, `{{ item.value }}`)">
+                                    Copy to Clipboard
+                                </button>
+                                <button class="suggest-btn" onclick="getTranslationSuggestions(`{{ item.value }}`, `input-{{ loop.index }}`, `suggestions-{{ loop.index }}`)">
+                                    Get Translations
+                                </button>
+                                <button class="suggest-btn ai-suggest-btn" onclick="getAISuggestions(`{{ item.value }}`, `input-{{ loop.index }}`, `ai-suggestions-{{ loop.index }}`)">
+                                    Get AI Suggestions
+                                </button>
+                            </div>
+                        </div>
+                        <div class="translation-row">
+                            <textarea class="translation-input" 
+                                  id="input-{{ loop.index }}" 
+                                  placeholder="Enter translation...">{{ existing_translations.get(item.key, '') }}</textarea>
+                        </div>
+                        <div class="undo-redo-buttons">
+                            <button class="undo-btn" onclick="undoChange('input-{{ loop.index }}')" title="Undo (Ctrl+Z)">↩ Undo</button>
+                            <button class="redo-btn" onclick="redoChange('input-{{ loop.index }}')" title="Redo (Ctrl+Y)">↪ Redo</button>
+                        </div>
+                        <div class="suggestions-container" id="suggestions-{{ loop.index }}"></div>
+                        <div class="ai-suggestions-container" id="ai-suggestions-{{ loop.index }}"></div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No keys to translate.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div id="settings" class="tab-content">
+        <h2>Settings</h2>
+        
+        <div class="settings-section">
+            <h3>Appearance</h3>
+            <div class="setting-item">
+                <label class="switch">
+                    <input type="checkbox" id="theme-switch">
+                    <span class="slider round"></span>
+                </label>
+                <span class="setting-label">Dark Mode</span>
+            </div>
+        </div>
+        
+        <div class="settings-section">
+            <h3>AI Suggestions</h3>
+            <div class="setting-item">
+                <label class="switch">
+                    <input type="checkbox" id="custom-preprompt-switch">
+                    <span class="slider round"></span>
+                </label>
+                <span class="setting-label">Use Custom Preprompt</span>
+            </div>
+            <textarea id="custom-preprompt" class="setting-textarea" placeholder="Enter custom preprompt for AI suggestions..." disabled></textarea>
+            
+            <div class="setting-item">
+                <label for="deepseek-api-key" class="setting-label">DeepSeek API Key:</label>
+                <input type="password" id="deepseek-api-key" class="setting-input" placeholder="Enter your DeepSeek API key">
+            </div>
+        </div>
+        
+        <div class="settings-section">
+            <h3>Yandex Translator</h3>
+            <div class="setting-item">
+                <label for="yandex-api-type" class="setting-label">API Type:</label>
+                <select id="yandex-api-type" class="setting-select">
+                    <option value="web">Web</option>
+                    <option value="ios">iOS</option>
+                </select>
+            </div>
+            
+            <div class="setting-item">
+                <label class="switch">
+                    <input type="checkbox" id="yandex-proxy-switch">
+                    <span class="slider round"></span>
+                </label>
+                <span class="setting-label">Use Proxy</span>
+            </div>
+            
+            <div class="proxy-settings" style="display: none;">
+                <div class="setting-item">
+                    <label for="proxy-type" class="setting-label">Proxy Type:</label>
+                    <select id="proxy-type" class="setting-select">
+                        <option value="http">HTTP</option>
+                        <option value="https">HTTPS</option>
+                        <option value="socks4">SOCKS4</option>
+                        <option value="socks5">SOCKS5</option>
+                    </select>
+                </div>
+                
+                <div class="setting-item">
+                    <label for="proxy-address" class="setting-label">Proxy Address:</label>
+                    <input type="text" id="proxy-address" class="setting-input" placeholder="proxy.example.com:8080">
+                </div>
+            </div>
+        </div>
+        
+        <div class="settings-actions">
+            <button class="save-settings-btn" onclick="saveSettings()">Save Settings</button>
+            <button class="reset-settings-btn" onclick="resetSettings()">Reset to Defaults</button>
+            <span id="settings-status" class="status-message"></span>
+        </div>
+    </div>
+    <script src="/static/js/scripts.js"></script>
+</body>
+</html>
