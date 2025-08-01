@@ -21,7 +21,7 @@ A Flask-based web application for comparing JSON translation files, managing tra
   - Auto-resizing textareas
   - Keyboard shortcuts (Ctrl+S to save, Ctrl+Z to undo, Ctrl+Y to redo)
   - Copy functionality for quick text transfer
-- **Settings**:
+- **Settings** (NOT IMPLEMENTED YET):
   - API key configuration
   - Proxy settings for translation services
   - Custom preprompt for AI suggestions
@@ -44,7 +44,10 @@ A Flask-based web application for comparing JSON translation files, managing tra
 The tool requires API keys for various translation services. You can configure them:
 
 1. **Through code**: Edit the `TranslationHelper` initialization in `main.py`
-2. **Through UI**: Use the Settings tab in the web interface (Not Implemented Yet)
+2. **Through .env file** Create `.env` File and paste this `DEEPSEEK_API_TOKEN="YOUR_TOKEN_HERE"`
+3. **Through UI**: Use the Settings tab in the web interface (Not Implemented Yet)
+
+*Api token got from deepseek website. login, open f12 and run command ```JSON.parse(localStorage.getItem("userToken")).value```
 
 Used services:
 - DeepSeek API
@@ -66,17 +69,13 @@ The application automatically creates backups in the `backups` folder before eac
 
 Contributions are welcome! Please open an issue or pull request for any improvements or bug fixes.
 
+## Credits
+
+[xtekky](https://github.com/xtekky/deepseek4free) - for dsk lib
+
+[alekssamos](https://github.com/alekssamos/yandexfreetranslate) - for yandexfreetranslate lib
+
+
 ## License
 
 [MIT License](LICENSE)
-```
-
-You may want to adjust the following based on your specific needs:
-
-1. Add or modify the API key requirements section based on which services are mandatory
-2. Update the installation instructions if you have any special setup requirements
-3. Add screenshots if available
-4. Include any known issues or limitations
-5. Add deployment instructions if applicable
-
-The README provides a comprehensive overview while keeping it concise and easy to follow. It covers all the main aspects of your tool including features, setup, usage, and configuration.
