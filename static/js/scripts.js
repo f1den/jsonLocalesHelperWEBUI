@@ -41,12 +41,47 @@ function copyToTranslation(key, value, inputId) {
     setTimeout(() => btn.textContent = originalText, 2000);
 }
 
+function visualizeWhitespace(element) {
+    const text = element.textContent || element.value;
+    let html = '';
+    
+    // console.log("Visualating whitespace for: " + text)
+    if (text === undefined){
+        return ' '
+    }
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (char === ' ') {
+            html += '<span class="whitespace whitespace-space"> </span>';
+        } else if (char === '\t') {
+            html += '<span class="whitespace whitespace-tab">\t</span>';
+        } else if (char === '\n') {
+            html += '<span class="whitespace-newline">\n</span>';
+        } else {
+            html += char;
+        }
+    }
+    
+    return html;
+}
+
+function applyWhitespaceVisualization() {    
+    // Для значений в DeepDiff
+    document.querySelectorAll('.old-value, .new-value').forEach(el => {
+        el.innerHTML = visualizeWhitespace(el);
+    });
+}
+
+// Modify the copyToClipboard function to preserve newlines
 function copyToClipboard(event, text) {
     event.preventDefault();
     const btn = event.currentTarget;
     const originalText = btn.textContent;
     
-    navigator.clipboard.writeText(text).then(() => {
+    // Preserve the exact text including newlines and spaces
+    const textToCopy = text.replace(/\\n/g, '\n'); // Convert \n to actual newlines
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
         btn.textContent = 'Copied!';
         btn.classList.add('copied');
         setTimeout(() => {
@@ -57,7 +92,7 @@ function copyToClipboard(event, text) {
         // Fallback for older browsers
         try {
             const textarea = document.createElement('textarea');
-            textarea.value = text;
+            textarea.value = textToCopy;
             document.body.appendChild(textarea);
             textarea.select();
             document.execCommand('copy');
@@ -166,7 +201,7 @@ async function getAISuggestions(text, inputId, containerId) {
         const response = await fetch('/get_ai_suggestions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({text: text})
+            body: JSON.stringify({text: text.replace("\n", "\\n")})
         });
         const data = await response.json();
         
@@ -214,6 +249,69 @@ async function getAISuggestions(text, inputId, containerId) {
     }
 }
 
+async function getLearningAISuggestions(text, inputId, containerId) {
+    const container = document.getElementById(containerId);
+    container.style.display = 'block';
+    container.innerHTML = `
+        <div class="suggestions-header">
+            <span>Learning AI Translation Suggestions</span>
+            <span class="close-suggestions" onclick="closeSuggestions('${containerId}', true)">×</span>
+        </div>
+        <div class="loading">Loading Learning AI suggestions...</div>
+    `;
+    
+    try {
+        const response = await fetch('/get_learning_ai_suggestions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({text: text.replace("\n", "\\n")})
+        });
+        const data = await response.json();
+        
+        if (data.error) {
+            container.innerHTML = `
+                <div class="suggestions-header">
+                    <span>Error getting Learning AI suggestions</span>
+                    <span class="close-suggestions" onclick="closeSuggestions('${containerId}', true)">×</span>
+                </div>
+                <div class="error-message">${data.error}</div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div class="suggestions-header">
+                <span>Learning AI Translation Suggestions</span>
+                <span class="close-suggestions" onclick="closeSuggestions('${containerId}', true)">×</span>
+            </div>
+        `;
+        
+        if (data.suggestions?.length > 0) {
+            data.suggestions.forEach((suggestion, index) => {
+                html += `
+                    <div class="ai-suggestion" onclick="useSuggestion('${inputId}', '${escapeHtml(suggestion)}')">
+                        <span class="suggestion-number">${index + 1}.</span>
+                        ${suggestion}
+                    </div>
+                `;
+                
+            });
+        } else {
+            html += `<div class="error-message">No Learning AI suggestions available</div>`;
+        }
+        
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = `
+            <div class="suggestions-header">
+                <span>Error getting Learning AI suggestions</span>
+                <span class="close-suggestions" onclick="closeSuggestions('${containerId}', true)">×</span>
+            </div>
+            <div class="error-message">Error loading Learning AI suggestions: ${error.message}</div>
+        `;
+    }
+}
+
 function closeSuggestions(containerId, clearContent = false) {
     const container = document.getElementById(containerId);
     container.style.display = 'none';
@@ -252,9 +350,14 @@ function openTab(evt, tabName) {
         tablinks[i].classList.remove("active");
     }
     
+    if (tabName === 'markedTodo') {
+        updateTodoTab();
+    }
+
     document.getElementById(tabName).classList.add("active");
     evt.currentTarget.classList.add("active");
 
+    applyWhitespaceVisualization();
     initAutoResizeTextareas();
 }
 
@@ -282,11 +385,13 @@ function collectTranslations() {
     
     textareas.forEach(textarea => {
         const key = textarea.id.replace('input-', '');
+        console.log(key)
         const originalKey = document.querySelector(`#translation-${key} .key`).textContent;
-        let value = textarea.value.trim();
-        if (value.startsWith("[{")) {
+        let value = textarea.value;
+        if (value.startsWith("[") && value.endsWith("]")) {
             translations[originalKey] = eval(value);
-            console.warn("EVALED")
+            console.warn("EVALED: " + value)
+            console.warn("EVALED: " + eval(value))
         } else {
             translations[originalKey] = value;
         }
@@ -295,15 +400,177 @@ function collectTranslations() {
     return translations;
 }
 
+function markAsTodo(inputId) {
+    const textarea = document.getElementById(inputId);
+    if (!textarea.value.includes('//TODO')) {
+        textarea.value = textarea.value + ' //TODO';
+        autoResizeTextarea(textarea);
+        addToHistory(textarea);
+        showToast('Marked as TODO', 'success');
+    } else {
+        showToast('Already marked as TODO', 'info');
+    }
+}
+
+function collectTodoItems() {
+    const todoItems = [];
+    const textareas = document.querySelectorAll('#translation .translation-input');
+    
+    textareas.forEach(textarea => {
+        if (textarea.value.includes('//TODO') || textarea.value.includes('//REDO')) {
+            const key = textarea.id.replace('input-', '');
+            const keyElement = document.querySelector(`#translation-${key} .key`);
+            const valueElement = document.querySelector(`#translation-${key} .new-value`);
+            
+            if (keyElement && valueElement) {
+                todoItems.push({
+                    key: keyElement.textContent,
+                    value: valueElement.textContent,
+                    translation: textarea.value
+                });
+            }
+        }
+    });
+    
+    return todoItems;
+}
+
+function updateTodoTab() {
+    const todoTab = document.getElementById('markedTodo');
+    if (!todoTab) return;
+    
+    const todoItems = collectTodoItems();
+    const todoList = todoTab.querySelector('.key-list');
+    
+    if (todoItems.length === 0) {
+        todoList.innerHTML = '<p>No TODO/REDO items found. Mark items in the Translation tab by adding //TODO.</p>';
+        return;
+    }
+    
+    let html = '<h3>TODO/REDO Items (' + todoItems.length + ')</h3>';
+    
+    todoItems.forEach((item, index) => {
+        html += `
+            <div class="key-item" id="todo-translation-${index}">
+                <div class="key-value-row">
+                    <span class="key">${item.key}</span>:
+                    <span class="new-value">${item.value}</span>
+                </div>
+                <div class="translation-row">
+                    <textarea class="translation-input" 
+                          id="todo-input-${index}" 
+                          placeholder="Enter translation...">${item.translation}</textarea>
+                </div>
+                <div class="suggestion-btn-row">
+                    <button class="copy-btn" onclick="copyToTranslation('${item.key}', '${escapeHtml(item.value)}', 'todo-input-${index}')">
+                        Copy to Translation
+                    </button>
+                    <button class="copy-clipboard-btn" onclick="copyToClipboard(event, '${escapeHtml(item.value)}')">
+                        Copy to Clipboard
+                    </button>
+                    <button class="suggest-btn" onclick="getTranslationSuggestions('${escapeHtml(item.value)}', 'todo-input-${index}', 'todo_suggestions-${index}')">
+                        Get Translations
+                    </button>
+                    <button class="suggest-btn ai-suggest-btn" onclick="getAISuggestions('${escapeHtml(item.value)}', 'todo-input-${index}', 'todo_ai-suggestions-${index}')">
+                        Get AI Suggestions
+                    </button>
+                    <button class="suggest-btn ai-suggest-btn learning-ai" onclick="getLearningAISuggestions('${escapeHtml(item.value)}', 'todo-input-${index}', 'todo_ai-suggestions-${index}')">
+                        Get Learning AI Suggestions
+                    </button>
+
+                    <button class="copy-btn" onclick="copyToTranslation('${item.key}', '${escapeHtml(item.value)}', 'todo-input-${index}')">
+                        Copy Original
+                    </button>
+                    <button class="mark-todo-btn" onclick="markAsTodo('input-{{ loop.index }}')">
+                        Mark as TODO
+                    </button>
+                    <button class="resolve-todo-btn" onclick="resolveTodo('todo-input-${index}')">
+                        Resolve TODO
+                    </button>
+                </div>
+                <div class="undo-redo-buttons">
+                    <button class="undo-btn" onclick="undoChange('todo-input-${index}')">↩ Undo</button>
+                    <button class="redo-btn" onclick="redoChange('todo-input-${index}')">↪ Redo</button>
+                </div>
+
+                <div class="suggestions-container" id="todo_suggestions-${index}"></div>
+                <div class="ai-suggestions-container" id="todo_ai-suggestions-${index}"></div>
+            </div>
+        `;
+    });
+    
+    todoList.innerHTML = html;
+    initAutoResizeTextareas();
+}
+
+function collectTodoTranslations() {
+    const translations = {};
+    const textareas = document.querySelectorAll('#markedTodo .translation-input');
+    
+    textareas.forEach(textarea => {
+        const key = textarea.id.replace('todo-input-', '');
+        const originalKey = document.querySelector(`#todo-translation-${key} .key`).textContent;
+        translations[originalKey] = textarea.value.trim();
+    });
+    
+    return translations;
+}
+
+function resolveTodo(inputId) {
+    const textarea = document.getElementById(inputId);
+    textarea.value = textarea.value.replace('//TODO', '').replace('//REDO', '').trim();
+    autoResizeTextarea(textarea);
+    addToHistory(textarea);
+    showToast('TODO resolved', 'success');
+    updateTodoTab(); // Refresh the TODO tab
+}
+
+async function saveAllTodoTranslations() {
+    const translations = collectTodoTranslations();
+    const statusMessage = document.getElementById('todo-status-message');
+    let state = true;
+    try {
+        const response = await fetch('/save_todo_translations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(translations)
+                .replace(/\\n/g, '\\n') // Явно сохраняем \n
+                .replace(/\\r/g, '\\r') // И \r если есть
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            statusMessage.textContent = `Successfully saved ${data.saved} TODO translations`;
+            statusMessage.className = 'status-message success-message';
+        } else {
+            statusMessage.textContent = 'Error: ' + (data.message || 'Unknown error');
+            statusMessage.className = 'status-message error-message';
+            state = false;
+        }
+        
+        setTimeout(() => {
+            statusMessage.textContent = '';
+            statusMessage.className = 'status-message';
+        }, 3000);
+        return state;
+    } catch (error) {
+        statusMessage.textContent = 'Error: ' + error.message;
+        statusMessage.className = 'status-message error-message';
+        return false;
+    }
+}
+
 async function saveAllTranslations() {
     const translations = collectTranslations();
     const statusMessage = document.getElementById('status-message');
-    
+    let state = true;
     try {
         const response = await fetch('/save_translations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(translations)
+                .replace(/\\n/g, '\\n') // Явно сохраняем \n
+                .replace(/\\r/g, '\\r') // И \r если есть
         });
         const data = await response.json();
         
@@ -313,15 +580,18 @@ async function saveAllTranslations() {
         } else {
             statusMessage.textContent = 'Error: ' + (data.message || 'Unknown error');
             statusMessage.className = 'status-message error-message';
+            state = false;
         }
         
         setTimeout(() => {
             statusMessage.textContent = '';
             statusMessage.className = 'status-message';
         }, 3000);
+        return state;
     } catch (error) {
         statusMessage.textContent = 'Error: ' + error.message;
         statusMessage.className = 'status-message error-message';
+        return false;
     }
 }
 
@@ -413,10 +683,26 @@ document.addEventListener('keydown', e => {
     console.log("DEBUG")
     if (e.ctrlKey && (e.key.toLowerCase() === 's' || e.key.toLowerCase() === 'ы')) {
         e.preventDefault();
-        const translationTab = document.getElementById('translation');
-        if (translationTab?.classList.contains('active')) {
-            saveAllTranslations();
+        const activeTab = document.querySelector('.tab.active');
+        const tabId = activeTab.getAttribute('onclick').split("'")[1];
+        let result = false;
+        if (tabId === 'translation') {
             showToast('Saving all translations...', 'info');
+            result = saveAllTranslations();
+            if (result) {
+                showToast('Saved all translations!', 'success');
+            } else {
+                showToast('Error saving translations.', 'error');
+            }
+            
+        } else if (tabId === 'markedTodo') {
+            showToast('Saving all TODO translations...', 'info');
+            result = saveAllTodoTranslations();
+            if (result) {
+                showToast('Saved all TODO translations!', 'success');
+            } else {
+                showToast('Error saving TODO translations.', 'error');
+            }
         }
     }
     
@@ -542,6 +828,7 @@ function tabresetSettings() {
 
 // Initialize when page is fully loaded
 window.addEventListener('load', function() {
+    applyWhitespaceVisualization();
     initAutoResizeTextareas();
     initChangeTracking();
     tabinitSettings();

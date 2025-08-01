@@ -15,6 +15,7 @@
         <div class="tab active" onclick="openTab(event, 'deepdiff')">DeepDiff</div>
         <div class="tab" onclick="openTab(event, 'keycheck')">KeyCheck</div>
         <div class="tab" onclick="openTab(event, 'translation')">Translation</div>
+        <div class="tab" onclick="openTab(event, 'markedTodo')">Marked TODO</div>
         <div class="tab settings-tab" onclick="openTab(event, 'settings')">⚙ Settings</div>
     </div>
     
@@ -113,11 +114,17 @@
                                 <button class="copy-clipboard-btn" onclick="copyToClipboard(event, `{{ item.value }}`)">
                                     Copy to Clipboard
                                 </button>
+                                <button class="mark-todo-btn" onclick="markAsTodo('input-{{ loop.index }}')">
+                                    Mark as TODO
+                                </button>
                                 <button class="suggest-btn" onclick="getTranslationSuggestions(`{{ item.value }}`, `input-{{ loop.index }}`, `suggestions-{{ loop.index }}`)">
                                     Get Translations
                                 </button>
                                 <button class="suggest-btn ai-suggest-btn" onclick="getAISuggestions(`{{ item.value }}`, `input-{{ loop.index }}`, `ai-suggestions-{{ loop.index }}`)">
                                     Get AI Suggestions
+                                </button>
+                                <button class="suggest-btn ai-suggest-btn learning-ai" onclick="getLearningAISuggestions(`{{ item.value }}`, `input-{{ loop.index }}`, `ai-suggestions-{{ loop.index }}`)">
+                                    Get Learning AI Suggestions
                                 </button>
                             </div>
                         </div>
@@ -140,6 +147,25 @@
         </div>
     </div>
     
+    <div id="markedTodo" class="tab-content">
+        <h2>Marked TODO/REDO Items</h2>
+        
+        <div class="translation-controls">
+            <button class="save-all-btn" onclick="saveAllTodoTranslations()">
+                Save All TODO Translations (Ctrl+Shift+S)
+            </button>
+            <span id="todo-status-message" class="status-message"></span>
+            <div class="backup-info">Automatic backups are created before each save in the 'backups' folder.</div>
+        </div>
+        
+        <div class="key-list">
+            <h3>TODO/REDO Items (<span id="todo-count">0</span>)</h3>
+            <div id="todo-items-container">
+                <p>No TODO/REDO items found. Mark items in the Translation tab by adding //TODO.</p>
+            </div>
+        </div>
+    </div>
+
     <div id="settings" class="tab-content">
         <h2>Settings</h2>
         
@@ -206,7 +232,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="settings-actions">
             <button class="save-settings-btn" onclick="saveSettings()">Save Settings</button>
             <button class="reset-settings-btn" onclick="resetSettings()">Reset to Defaults</button>

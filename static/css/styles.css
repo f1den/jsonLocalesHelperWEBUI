@@ -9,6 +9,7 @@
     --medium-gray: #ddd;
     --dark-gray: #666;
     --purple: #673ab7;
+    --pastel-pinpurle: #b73ab7;
     --deep-purple: #5c6bc0;
     --brown: #795548;
 }
@@ -189,7 +190,7 @@ h1 {
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
 
-.copy-btn, .suggest-btn, .copy-clipboard-btn, .undo-btn, .redo-btn {
+.copy-btn, .suggest-btn, .copy-clipboard-btn, .undo-btn, .redo-btn, .mark-todo-btn, .resolve-todo-btn{
     border: none;
     border-radius: 4px;
     padding: 6px 12px;
@@ -200,6 +201,86 @@ h1 {
     display: inline-flex;
     align-items: center;
     gap: 5px;
+}
+
+.mark-todo-btn {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.mark-todo-btn:hover {
+    background-color: #e68a00;
+}
+
+.resolve-todo-btn {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.resolve-todo-btn:hover {
+    background-color: #3d8b40;
+}
+
+/* Highlight TODO items in translation tab */
+.textarea-with-todo {
+    border-left: 3px solid var(--warning-color);
+    padding-left: 10px;
+}
+
+.translation-input, .new-value, .old-value {
+    white-space: pre-wrap; /* Preserve both spaces and line breaks */
+    word-break: break-word; /* Break long words if needed */
+}
+
+.show-control-chars::before {
+    content: "\\A";
+    white-space: pre;
+    color: #999;
+}
+
+.translation-input {
+    font-family: Consolas, monospace; /* Use monospace font to better see whitespace */
+}
+
+/* For displaying values in diffs */
+.new-value, .old-value {
+    font-family: Consolas, monospace;
+    display: inline-block;
+    max-width: 100%;
+    overflow-x: auto;
+    background-color: rgba(0,0,0,0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+/* CAN LEAD TO ERROR */
+textarea {
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
+/* Стили для визуализации пробелов и переносов */
+.whitespace {
+    position: relative;
+}
+.whitespace-space::before {
+    content: "·";
+    color: #aaa;
+    position: absolute;
+}
+.whitespace-tab::before {
+    content: "→";
+    color: #99f;
+    position: absolute;
+}
+.whitespace-newline {
+    /* display: inline-block; */
+    width: 100%;
+}
+.whitespace-newline::after {
+    content: "↵";
+    color: #f99;
+    margin-left: 2px;
 }
 
 .copy-btn {
@@ -246,6 +327,14 @@ h1 {
 
 .ai-suggest-btn:hover {
     background-color: #5e35b1;
+}
+
+.learning-ai {
+    background-color: var(--pastel-pinpurle) !important;
+}
+
+.learning-ai:hover {
+    background-color: #b1358c !important;
 }
 
 .suggestion-btn-row {
@@ -482,7 +571,7 @@ h1 {
 
 .setting-input, .setting-textarea, .setting-select {
     width: 100%; /* Will take full width of parent .setting-control */
-    max-width: 300px; /* Maximum width to prevent over-expansion */
+    /* max-width: 300px; */
     padding: 8px 12px;
     border: 1px solid var(--medium-gray);
     border-radius: 4px;
@@ -694,3 +783,15 @@ input:checked + .slider:before {
 .toast-notification.warning {
     background-color: var(--warning-color);
 }
+
+/* Add this to your CSS */
+#markedTodo .key-item {
+    border-left: 3px solid var(--warning-color);
+    padding-left: 12px;
+}
+
+#markedTodo .new-value {
+    color: var(--warning-color);
+    background-color: rgba(255, 152, 0, 0.1);
+}
+

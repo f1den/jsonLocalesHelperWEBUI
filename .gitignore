@@ -164,5 +164,10 @@ black.py
 test.py
 dsk/cookies.json
 
+# Development and testing this app
 /templates/diff copy.html
 /mods
+/backups
+/backups_debug
+new_keys.bak
+newKeys_ru_ru copy.json

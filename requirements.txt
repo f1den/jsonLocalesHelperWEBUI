@@ -5,3 +5,6 @@ numpy==1.23.5
 PySocks==1.7.1
 setuptools==72.1.0
 wasmtime==35.0.0
+flask==3.0.3
+deepdiff==8.5.0
+python-dotenv==1.0.0
